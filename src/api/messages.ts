@@ -10,20 +10,31 @@ export interface Message {
 export interface ParsedMessage {
   whatsapp: string
   sms: string
-}
-
-export function parseMessage(raw: string): ParsedMessage {
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return { whatsapp: raw, sms: raw }
-  }
+  email_subject: string
+  email_body: string
 }
 
 export const messagesApi = {
-  list: (businessId: number) =>
-    api.get<Message[]>(`/messages/${businessId}`).then((r) => r.data),
+  list: async (businessId: number): Promise<Message[]> => {
+    const { data } = await api.get<Message[]>(`/messages/${businessId}`)
+    return data
+  },
+  generate: async (businessId: number, prompt_type: string = 'initial', platform: string = 'whatsapp'): Promise<Message> => {
+    const { data } = await api.post<Message>('/messages', { business_id: businessId, prompt_type, platform })
+    return data
+  },
+}
 
-  generate: (businessId: number) =>
-    api.post<Message>('/messages', { business_id: businessId }).then((r) => r.data),
+export function parseMessage(generatedMessage: string): ParsedMessage {
+  try {
+    const parsed = JSON.parse(generatedMessage)
+    return {
+      whatsapp: parsed.whatsapp || '',
+      sms: parsed.sms || '',
+      email_subject: parsed.email_subject || '',
+      email_body: parsed.email_body || '',
+    }
+  } catch (e) {
+    return { whatsapp: generatedMessage, sms: '', email_subject: '', email_body: '' }
+  }
 }

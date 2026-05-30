@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Globe, Phone, MapPin, Star, Loader2,
-  Wand2, Copy, Check, RefreshCw, Trash2, MessageCircle, Send
+  Wand2, Copy, Check, RefreshCw, Trash2, MessageCircle, Send, ExternalLink
 } from 'lucide-react'
 import { businessesApi, type BusinessUpdate } from '@/api/businesses'
 import { messagesApi, parseMessage } from '@/api/messages'
@@ -45,9 +45,26 @@ function WhatsAppButton({ phone, message }: { phone: string | null; message: str
   }
   const cleaned = phone ? normalise(phone) : ''
   const encoded = encodeURIComponent(message)
-  const url = cleaned
-    ? `https://wa.me/${cleaned}?text=${encoded}`
-    : `https://wa.me/?text=${encoded}`
+  const url = cleaned ? `https://wa.me/${cleaned}?text=${encoded}` : ''
+
+  // Validate if phone number is valid (e.g. has at least 10 digits after cleaning)
+  const hasValidPhone = cleaned && cleaned.replace(/\D/g, '').length >= 10
+
+  if (!hasValidPhone) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1.5 text-xs text-muted-foreground opacity-50 cursor-not-allowed"
+        disabled
+        title="No valid phone number available for WhatsApp outreach"
+      >
+        <MessageCircle className="h-3 w-3" />
+        <span className="hidden sm:inline">Send on </span>WhatsApp
+      </Button>
+    )
+  }
+
   return (
     <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-emerald-400 hover:text-emerald-300" asChild>
       <a href={url} target="_blank" rel="noopener noreferrer">
@@ -76,6 +93,7 @@ export function LeadDetails() {
 
   const [notes, setNotes] = useState<string>('')
   const [notesChanged, setNotesChanged] = useState(false)
+  const [generatingType, setGeneratingType] = useState<string | null>(null)
 
   const updateMutation = useMutation({
     mutationFn: (data: BusinessUpdate) => businessesApi.update(businessId, data),
@@ -99,12 +117,14 @@ export function LeadDetails() {
   })
 
   const generateMutation = useMutation({
-    mutationFn: () => messagesApi.generate(businessId),
+    mutationFn: ({ promptType = 'initial', platform = 'whatsapp' }: { promptType?: string, platform?: string }) => 
+      messagesApi.generate(businessId, promptType, platform),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', businessId] })
       toast({ title: 'Message generated' })
     },
     onError: () => toast({ title: 'Generation failed', variant: 'destructive' }),
+    onSettled: () => setGeneratingType(null),
   })
 
   const deleteMutation = useMutation({
@@ -134,7 +154,7 @@ export function LeadDetails() {
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="sticky top-0 z-50 -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/leads')}>
             <ArrowLeft className="h-4 w-4" />
@@ -183,9 +203,22 @@ export function LeadDetails() {
                 { icon: MapPin, label: 'Address', key: 'address' as const, placeholder: 'MG Road, Bangalore' },
               ].map(({ icon: Icon, label, key, placeholder }) => (
                 <div key={key} className="grid gap-1">
-                  <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Icon className="h-3 w-3" /> {label}
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Icon className="h-3 w-3" /> {label}
+                    </Label>
+                    {key === 'website' && business.website && (
+                      <a
+                        href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 hover:underline"
+                        title="Open website in new tab"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Open Link
+                      </a>
+                    )}
+                  </div>
                   <Input
                     defaultValue={business[key] ?? ''}
                     placeholder={placeholder}
@@ -280,23 +313,40 @@ export function LeadDetails() {
             <CardHeader>
               <CardTitle className="text-sm">Lead Status</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Select
-                value={business.lead_status}
-                disabled={updateMutation.isPending}
-                onValueChange={(val) => updateMutation.mutate({ lead_status: val })}
-              >
-                <SelectTrigger>
-                  {updateMutation.isPending
-                    ? <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving...</span>
-                    : <SelectValue />}
-                </SelectTrigger>
-                <SelectContent>
-                  {LEAD_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Select
+                  value={business.lead_status}
+                  disabled={updateMutation.isPending}
+                  onValueChange={(val) => updateMutation.mutate({ lead_status: val })}
+                >
+                  <SelectTrigger>
+                    {updateMutation.isPending
+                      ? <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving...</span>
+                      : <SelectValue />}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LEAD_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Next Follow-up</Label>
+                <Input
+                  type="date"
+                  className="h-9"
+                  disabled={updateMutation.isPending}
+                  value={business.next_followup_date ? business.next_followup_date.split('T')[0] : ''}
+                  onChange={(e) => {
+                    const dateVal = e.target.value ? new Date(e.target.value).toISOString() : null;
+                    updateMutation.mutate({ next_followup_date: dateVal });
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -331,19 +381,72 @@ export function LeadDetails() {
       <div className="mt-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="text-sm">AI Outreach Messages</CardTitle>
-              <Button
-                size="sm"
-                disabled={generateMutation.isPending}
-                onClick={() => generateMutation.mutate()}
-              >
-                {generateMutation.isPending ? (
-                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating...</>
-                ) : (
-                  <><Wand2 className="h-3.5 w-3.5" /> Generate</>
-                )}
-              </Button>
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <div className="flex items-center flex-wrap gap-2 sm:justify-end">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-8 text-xs min-w-[100px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('wa_initial'); generateMutation.mutate({ promptType: 'initial', platform: 'whatsapp' }); }}
+                  >
+                    {generatingType === 'wa_initial' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Wand2 className="h-3.5 w-3.5 mr-1.5" /> WA Initial</>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs min-w-[110px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('wa_followup'); generateMutation.mutate({ promptType: 'follow_up', platform: 'whatsapp' }); }}
+                  >
+                    {generatingType === 'wa_followup' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                    ) : (
+                      "WA Follow-up"
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs min-w-[100px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('wa_budget'); generateMutation.mutate({ promptType: 'objection_budget', platform: 'whatsapp' }); }}
+                  >
+                    {generatingType === 'wa_budget' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                    ) : (
+                      "WA Budget"
+                    )}
+                  </Button>
+                </div>
+                <div className="flex items-center flex-wrap gap-2 sm:justify-end">
+                  <span className="text-xs text-muted-foreground mr-1">Other:</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs px-2 text-muted-foreground min-w-[90px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('email'); generateMutation.mutate({ promptType: 'initial', platform: 'email' }); }}
+                  >
+                    {generatingType === 'email' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Gen. Email"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs px-2 text-muted-foreground min-w-[80px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('sms'); generateMutation.mutate({ promptType: 'initial', platform: 'sms' }); }}
+                  >
+                    {generatingType === 'sms' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Gen. SMS"}
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -360,49 +463,90 @@ export function LeadDetails() {
                   const parsed = parseMessage(latest.generated_message)
                   return (
                     <>
-                      <div className="rounded-lg border border-border bg-muted/30 p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              WhatsApp
-                            </span>
-                            {business.lead_status === 'CONTACTED' && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">
-                                <Check className="h-3 w-3" /> Sent
+                      {parsed.whatsapp && (
+                        <div className="rounded-lg border border-border bg-muted/30 p-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                WhatsApp
                               </span>
-                            )}
+                              {business.lead_status === 'CONTACTED' && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                                  <Check className="h-3 w-3" /> Sent
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              <CopyButton text={parsed.whatsapp} />
+                              <WhatsAppButton phone={business.phone} message={parsed.whatsapp} />
+                              {business.lead_status !== 'CONTACTED' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={updateMutation.isPending}
+                                  className="h-7 gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                                  onClick={() => updateMutation.mutate({ lead_status: 'CONTACTED' })}
+                                >
+                                  {updateMutation.isPending
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : <Send className="h-3 w-3" />}
+                                  <span className="hidden xs:inline">Mark </span>Sent
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-wrap justify-end">
-                            <CopyButton text={parsed.whatsapp} />
-                            <WhatsAppButton phone={business.phone} message={parsed.whatsapp} />
-                            {business.lead_status !== 'CONTACTED' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={updateMutation.isPending}
-                                className="h-7 gap-1.5 text-xs text-blue-400 hover:text-blue-300"
-                                onClick={() => updateMutation.mutate({ lead_status: 'CONTACTED' })}
-                              >
-                                {updateMutation.isPending
-                                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                                  : <Send className="h-3 w-3" />}
-                                <span className="hidden xs:inline">Mark </span>Sent
-                              </Button>
-                            )}
+                          <p className="text-sm leading-relaxed whitespace-pre-line">{parsed.whatsapp}</p>
+                        </div>
+                      )}
+                      {parsed.sms && (
+                        <>
+                          {parsed.whatsapp && <Separator />}
+                          <div className="rounded-lg border border-border bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                SMS
+                              </span>
+                              <CopyButton text={parsed.sms} />
+                            </div>
+                            <p className="text-sm leading-relaxed whitespace-pre-line">{parsed.sms}</p>
                           </div>
-                        </div>
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{parsed.whatsapp}</p>
-                      </div>
-                      <Separator />
-                      <div className="rounded-lg border border-border bg-muted/30 p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            SMS
-                          </span>
-                          <CopyButton text={parsed.sms} />
-                        </div>
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{parsed.sms}</p>
-                      </div>
+                        </>
+                      )}
+                      
+                      {parsed.email_subject && parsed.email_body && (
+                        <>
+                          <Separator />
+                          <div className="rounded-lg border border-border bg-muted/30 p-4">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                Email
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <CopyButton text={parsed.email_subject + "\n\n" + parsed.email_body} />
+                                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-blue-400 hover:text-blue-300" asChild>
+                                  <a
+                                    href={`mailto:?subject=${encodeURIComponent(parsed.email_subject)}&body=${encodeURIComponent(parsed.email_body)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Send className="h-3 w-3" />
+                                    Send Email
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm font-semibold border-b border-border/50 pb-2">
+                                <span className="text-muted-foreground font-normal">Subject: </span>
+                                {parsed.email_subject}
+                              </p>
+                              <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+                                {parsed.email_body}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )
                 })()}

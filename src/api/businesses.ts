@@ -12,6 +12,7 @@ export interface Business {
   website_status: 'UNCHECKED' | 'NO_WEBSITE' | 'WORKING' | 'BROKEN'
   lead_status: 'NEW' | 'CONTACTED' | 'INTERESTED' | 'WON' | 'LOST'
   notes: string | null
+  next_followup_date: string | null
   created_at: string
 }
 
@@ -36,6 +37,7 @@ export interface BusinessUpdate {
   website_status?: string
   lead_status?: string
   notes?: string
+  next_followup_date?: string | null
 }
 
 export interface DashboardStats {
@@ -47,15 +49,25 @@ export interface DashboardStats {
   won: number
 }
 
+export interface PaginatedBusinesses {
+  items: Business[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
 export interface ListParams {
   search?: string
   lead_status?: string
   website_status?: string
+  page?: number
+  limit?: number
 }
 
 export const businessesApi = {
   list: (params?: ListParams) =>
-    api.get<Business[]>('/businesses', { params }).then((r) => r.data),
+    api.get<PaginatedBusinesses>('/businesses', { params }).then((r) => r.data),
 
   get: (id: number) =>
     api.get<Business>(`/businesses/${id}`).then((r) => r.data),

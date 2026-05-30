@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Trash2, ExternalLink, Zap, Loader2, Check } from 'lucide-react'
+import { Plus, Search, Trash2, ExternalLink, Zap, Loader2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { businessesApi, type BusinessCreate } from '@/api/businesses'
 import { useLeadStore } from '@/store/useLeadStore'
 import { ScrapeModal } from '@/components/ScrapeModal'
@@ -48,6 +48,9 @@ export function Leads() {
   const { filters, setSearch, setLeadStatus, setWebsiteStatus } = useLeadStore()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<BusinessCreate>(emptyForm)
+  
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
 
   useEffect(() => {
     const ls = searchParams.get('lead_status')
@@ -56,15 +59,23 @@ export function Leads() {
     if (ws) setWebsiteStatus(ws)
   }, [searchParams, setLeadStatus, setWebsiteStatus])
 
-  const { data: businesses, isLoading } = useQuery({
-    queryKey: ['businesses', filters],
+  useEffect(() => {
+    setPage(1)
+  }, [filters.search, filters.lead_status, filters.website_status])
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['businesses', filters, page, limit],
     queryFn: () =>
       businessesApi.list({
         search: filters.search || undefined,
         lead_status: filters.lead_status || undefined,
         website_status: filters.website_status || undefined,
+        page,
+        limit,
       }),
   })
+
+  const businesses = data?.items
 
   const createMutation = useMutation({
     mutationFn: businessesApi.create,
@@ -89,9 +100,9 @@ export function Leads() {
 
   const processMutation = useMutation({
     mutationFn: async () => {
-      const all = await businessesApi.list({ website_status: 'UNCHECKED' })
-      if (all.length === 0) throw new Error('No unchecked businesses')
-      return businessesApi.bulkProcess(all.map((b) => b.id))
+      const all = await businessesApi.list({ website_status: 'UNCHECKED', limit: 0 })
+      if (all.items.length === 0) throw new Error('No unchecked businesses')
+      return businessesApi.bulkProcess(all.items.map((b) => b.id))
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['businesses'] })
@@ -113,7 +124,7 @@ export function Leads() {
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Leads</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {businesses?.length ?? 0} businesses
+            {data?.total ?? 0} businesses
           </p>
         </div>
 
@@ -398,6 +409,85 @@ export function Leads() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination Controls */}
+      {data && data.total > 0 && (
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-border pt-4 sm:flex-row">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Rows per page:</span>
+              <Select
+                value={String(limit)}
+                onValueChange={(v) => {
+                  setLimit(Number(v))
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="h-8 w-16 bg-card border-border">
+                  <SelectValue placeholder={String(limit)} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Showing <span className="font-medium">{Math.min((page - 1) * limit + 1, data.total)}</span> to{' '}
+              <span className="font-medium">{Math.min(page * limit, data.total)}</span> of{' '}
+              <span className="font-medium">{data.total}</span> leads
+            </p>
+          </div>
+
+          {data.pages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <span className="text-xs sm:text-sm font-medium whitespace-nowrap px-1">
+                Page {page} of {data.pages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setPage((p) => Math.min(p + 1, data.pages))}
+                disabled={page === data.pages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setPage(data.pages)}
+                disabled={page === data.pages}
+              >
+                Last
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
