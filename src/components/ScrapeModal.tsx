@@ -175,7 +175,8 @@ export function ScrapeModal() {
               <>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <button
-                    className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                    disabled={isProcessing}
+                    className="flex items-center gap-1.5 hover:text-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none"
                     onClick={toggleAll}
                   >
                     {selected.size === results.length ? (
@@ -192,10 +193,10 @@ export function ScrapeModal() {
                   {results.map((b, i) => (
                     <div
                       key={i}
-                      className={`flex items-start gap-3 p-3 cursor-pointer transition-colors ${
-                        selected.has(i) ? 'bg-accent/40' : 'hover:bg-muted/30'
-                      }`}
-                      onClick={() => toggle(i)}
+                      className={`flex items-start gap-3 p-3 transition-colors ${
+                        isProcessing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                      } ${selected.has(i) ? 'bg-accent/40' : 'hover:bg-muted/30'}`}
+                      onClick={() => !isProcessing && toggle(i)}
                     >
                       <div className="mt-0.5 flex-shrink-0">
                         {selected.has(i) ? (

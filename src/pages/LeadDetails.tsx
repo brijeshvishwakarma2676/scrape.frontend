@@ -155,12 +155,15 @@ export function LeadDetails() {
           <Button
             variant="ghost"
             size="icon"
+            disabled={deleteMutation.isPending}
             className="ml-auto sm:ml-0 text-muted-foreground hover:text-destructive"
             onClick={() => {
               if (confirm(`Delete "${business.name}"?`)) deleteMutation.mutate()
             }}
           >
-            <Trash2 className="h-4 w-4" />
+            {deleteMutation.isPending
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Trash2 className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -254,13 +257,16 @@ export function LeadDetails() {
               {notesChanged && (
                 <Button
                   size="sm"
-                  className="ml-auto h-7 text-xs"
+                  disabled={updateMutation.isPending}
+                  className="ml-auto h-7 text-xs gap-1.5"
                   onClick={() => {
                     updateMutation.mutate({ notes: currentNotes })
                     setNotesChanged(false)
                   }}
                 >
-                  Save Notes
+                  {updateMutation.isPending
+                    ? <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>
+                    : 'Save Notes'}
                 </Button>
               )}
             </CardContent>
@@ -277,10 +283,13 @@ export function LeadDetails() {
             <CardContent>
               <Select
                 value={business.lead_status}
+                disabled={updateMutation.isPending}
                 onValueChange={(val) => updateMutation.mutate({ lead_status: val })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  {updateMutation.isPending
+                    ? <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving...</span>
+                    : <SelectValue />}
                 </SelectTrigger>
                 <SelectContent>
                   {LEAD_STATUSES.map((s) => (
@@ -370,10 +379,13 @@ export function LeadDetails() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                disabled={updateMutation.isPending}
                                 className="h-7 gap-1.5 text-xs text-blue-400 hover:text-blue-300"
                                 onClick={() => updateMutation.mutate({ lead_status: 'CONTACTED' })}
                               >
-                                <Send className="h-3 w-3" />
+                                {updateMutation.isPending
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <Send className="h-3 w-3" />}
                                 <span className="hidden xs:inline">Mark </span>Sent
                               </Button>
                             )}

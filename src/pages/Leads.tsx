@@ -381,13 +381,16 @@ export function Leads() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    disabled={deleteMutation.isPending}
                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation()
                       if (confirm(`Delete "${b.name}"?`)) deleteMutation.mutate(b.id)
                     }}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    {deleteMutation.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Trash2 className="h-3.5 w-3.5" />}
                   </Button>
                 </TableCell>
               </TableRow>
