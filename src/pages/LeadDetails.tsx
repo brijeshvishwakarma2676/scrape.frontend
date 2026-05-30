@@ -36,7 +36,14 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function WhatsAppButton({ phone, message }: { phone: string | null; message: string }) {
-  const cleaned = phone?.replace(/\D/g, '') ?? ''
+  const normalise = (raw: string) => {
+    const digits = raw.replace(/\D/g, '')
+    if (digits.startsWith('91') && digits.length === 12) return digits   // already +91xxxxxxxxxx
+    if (digits.startsWith('0') && digits.length === 11) return '91' + digits.slice(1) // 0xxxxxxxxxx → 91xxxxxxxxxx
+    if (digits.length === 10) return '91' + digits                       // bare 10-digit
+    return digits
+  }
+  const cleaned = phone ? normalise(phone) : ''
   const encoded = encodeURIComponent(message)
   const url = cleaned
     ? `https://wa.me/${cleaned}?text=${encoded}`
