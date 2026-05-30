@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Globe, Phone, MapPin, Star, Loader2,
-  Wand2, Copy, Check, RefreshCw, Trash2, MessageCircle
+  Wand2, Copy, Check, RefreshCw, Trash2, MessageCircle, Send
 } from 'lucide-react'
 import { businessesApi, type BusinessUpdate } from '@/api/businesses'
 import { messagesApi, parseMessage } from '@/api/messages'
@@ -348,12 +348,30 @@ export function LeadDetails() {
                     <>
                       <div className="rounded-lg border border-border bg-muted/30 p-4">
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            WhatsApp
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              WhatsApp
+                            </span>
+                            {business.lead_status === 'CONTACTED' && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-500/20">
+                                <Check className="h-3 w-3" /> Sent
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1">
                             <CopyButton text={parsed.whatsapp} />
                             <WhatsAppButton phone={business.phone} message={parsed.whatsapp} />
+                            {business.lead_status !== 'CONTACTED' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1.5 text-xs text-blue-400 hover:text-blue-300"
+                                onClick={() => updateMutation.mutate({ lead_status: 'CONTACTED' })}
+                              >
+                                <Send className="h-3 w-3" />
+                                Mark Sent
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <p className="text-sm leading-relaxed whitespace-pre-line">{parsed.whatsapp}</p>
