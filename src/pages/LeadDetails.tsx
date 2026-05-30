@@ -52,7 +52,7 @@ function WhatsAppButton({ phone, message }: { phone: string | null; message: str
     <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-emerald-400 hover:text-emerald-300" asChild>
       <a href={url} target="_blank" rel="noopener noreferrer">
         <MessageCircle className="h-3 w-3" />
-        Send on WhatsApp
+        <span className="hidden sm:inline">Send on </span>WhatsApp
       </a>
     </Button>
   )
@@ -134,23 +134,28 @@ export function LeadDetails() {
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-8">
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-2">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/leads')}>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/leads')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-xl font-semibold">{business.name}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold truncate">{business.name}</h1>
             <p className="text-sm text-muted-foreground">{business.category || 'No category'}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pl-11 sm:pl-0">
           <WebsiteStatusBadge status={business.website_status} />
           <LeadStatusBadge status={business.lead_status} />
+          {business.lead_status === 'CONTACTED' && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 text-xs font-medium text-emerald-400">
+              <Check className="h-3 w-3" /> Sent
+            </span>
+          )}
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-destructive"
+            className="ml-auto sm:ml-0 text-muted-foreground hover:text-destructive"
             onClick={() => {
               if (confirm(`Delete "${business.name}"?`)) deleteMutation.mutate()
             }}
@@ -358,7 +363,7 @@ export function LeadDetails() {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
                             <CopyButton text={parsed.whatsapp} />
                             <WhatsAppButton phone={business.phone} message={parsed.whatsapp} />
                             {business.lead_status !== 'CONTACTED' && (
@@ -369,7 +374,7 @@ export function LeadDetails() {
                                 onClick={() => updateMutation.mutate({ lead_status: 'CONTACTED' })}
                               >
                                 <Send className="h-3 w-3" />
-                                Mark Sent
+                                <span className="hidden xs:inline">Mark </span>Sent
                               </Button>
                             )}
                           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Trash2, ExternalLink, Zap, Loader2 } from 'lucide-react'
+import { Plus, Search, Trash2, ExternalLink, Zap, Loader2, Check } from 'lucide-react'
 import { businessesApi, type BusinessCreate } from '@/api/businesses'
 import { useLeadStore } from '@/store/useLeadStore'
 import { ScrapeModal } from '@/components/ScrapeModal'
@@ -280,18 +280,34 @@ export function Leads() {
         {businesses?.map((b) => (
           <div
             key={b.id}
-            className="flex items-start justify-between rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-accent/40"
+            className="rounded-lg border border-border bg-card p-3 cursor-pointer active:bg-accent/40"
             onClick={() => navigate(`/leads/${b.id}`)}
           >
-            <div className="flex-1 min-w-0 mr-3">
+            {/* Row 1: name + sent badge */}
+            <div className="flex items-center justify-between gap-2">
               <p className="font-medium text-sm truncate">{b.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              {b.lead_status === 'CONTACTED' && (
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                  <Check className="h-3 w-3" /> Sent
+                </span>
+              )}
+              {b.lead_status === 'WON' && (
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-yellow-500/15 border border-yellow-500/25 px-2 py-0.5 text-xs font-medium text-yellow-400">
+                  Won
+                </span>
+              )}
+            </div>
+            {/* Row 2: meta + website/status badges */}
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground truncate">
                 {[b.category, b.phone, b.rating ? `★ ${b.rating}` : null].filter(Boolean).join(' · ')}
               </p>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <WebsiteStatusBadge status={b.website_status} />
-              <LeadStatusBadge status={b.lead_status} />
+              <div className="flex items-center gap-1 shrink-0">
+                <WebsiteStatusBadge status={b.website_status} />
+                {!['CONTACTED', 'WON'].includes(b.lead_status) && (
+                  <LeadStatusBadge status={b.lead_status} />
+                )}
+              </div>
             </div>
           </div>
         ))}
