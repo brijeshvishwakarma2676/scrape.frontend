@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Trash2, ExternalLink, Zap, Loader2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { businessesApi, type BusinessCreate } from '@/api/businesses'
-import { useLeadStore } from '@/store/useLeadStore'
 import { ScrapeModal } from '@/components/ScrapeModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,34 +41,38 @@ const emptyForm: BusinessCreate = {
 }
 
 export function Leads() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { filters, setSearch, setLeadStatus, setWebsiteStatus } = useLeadStore()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<BusinessCreate>(emptyForm)
-  
-  const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(10)
 
-  useEffect(() => {
-    const ls = searchParams.get('lead_status')
-    const ws = searchParams.get('website_status')
-    if (ls) setLeadStatus(ls)
-    if (ws) setWebsiteStatus(ws)
-  }, [searchParams, setLeadStatus, setWebsiteStatus])
+  const search = searchParams.get('search') ?? ''
+  const leadStatus = searchParams.get('lead_status') ?? ''
+  const websiteStatus = searchParams.get('website_status') ?? ''
+  const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
+  const limit = Number(searchParams.get('limit') ?? '10')
 
-  useEffect(() => {
-    setPage(1)
-  }, [filters.search, filters.lead_status, filters.website_status])
+  function setParam(key: string, value: string, resetPage = true) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (value) next.set(key, value)
+        else next.delete(key)
+        if (resetPage && key !== 'page') next.set('page', '1')
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['businesses', filters, page, limit],
+    queryKey: ['businesses', search, leadStatus, websiteStatus, page, limit],
     queryFn: () =>
       businessesApi.list({
-        search: filters.search || undefined,
-        lead_status: filters.lead_status || undefined,
-        website_status: filters.website_status || undefined,
+        search: search || undefined,
+        lead_status: leadStatus || undefined,
+        website_status: websiteStatus || undefined,
         page,
         limit,
       }),
@@ -244,14 +247,14 @@ export function Leads() {
           <Input
             placeholder="Search businesses..."
             className="pl-8"
-            value={filters.search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={search}
+            onChange={(e) => setParam('search', e.target.value)}
           />
         </div>
         <div className="flex gap-2">
           <Select
-            value={filters.lead_status || 'all'}
-            onValueChange={(v) => setLeadStatus(v === 'all' ? '' : v)}
+            value={leadStatus || 'all'}
+            onValueChange={(v) => setParam('lead_status', v === 'all' ? '' : v)}
           >
             <SelectTrigger className="flex-1 sm:w-40">
               <SelectValue placeholder="Lead Status" />
@@ -263,8 +266,8 @@ export function Leads() {
             </SelectContent>
           </Select>
           <Select
-            value={filters.website_status || 'all'}
-            onValueChange={(v) => setWebsiteStatus(v === 'all' ? '' : v)}
+            value={websiteStatus || 'all'}
+            onValueChange={(v) => setParam('website_status', v === 'all' ? '' : v)}
           >
             <SelectTrigger className="flex-1 sm:w-44">
               <SelectValue placeholder="Website Status" />
@@ -419,8 +422,8 @@ export function Leads() {
               <Select
                 value={String(limit)}
                 onValueChange={(v) => {
-                  setLimit(Number(v))
-                  setPage(1)
+                  setParam('limit', v)
+                  setParam('page', '1', false)
                 }}
               >
                 <SelectTrigger className="h-8 w-16 bg-card border-border">
@@ -447,7 +450,7 @@ export function Leads() {
                 variant="outline"
                 size="sm"
                 className="h-8 px-2 text-xs"
-                onClick={() => setPage(1)}
+                onClick={() => setParam('page', '1', false)}
                 disabled={page === 1}
               >
                 First
@@ -456,12 +459,12 @@ export function Leads() {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                onClick={() => setParam('page', String(Math.max(page - 1, 1)), false)}
                 disabled={page === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
+
               <span className="text-xs sm:text-sm font-medium whitespace-nowrap px-1">
                 Page {page} of {data.pages}
               </span>
@@ -470,7 +473,7 @@ export function Leads() {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => setPage((p) => Math.min(p + 1, data.pages))}
+                onClick={() => setParam('page', String(Math.min(page + 1, data.pages)), false)}
                 disabled={page === data.pages}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -479,7 +482,7 @@ export function Leads() {
                 variant="outline"
                 size="sm"
                 className="h-8 px-2 text-xs"
-                onClick={() => setPage(data.pages)}
+                onClick={() => setParam('page', String(data.pages), false)}
                 disabled={page === data.pages}
               >
                 Last
