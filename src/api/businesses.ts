@@ -83,6 +83,9 @@ export interface ListParams {
   search?: string
   lead_status?: string
   website_status?: string
+  phone_type?: string
+  sort_by?: string
+  sort_dir?: string
   page?: number
   limit?: number
 }
@@ -117,4 +120,10 @@ export const businessesApi = {
       '/pipeline/bulk',
       { business_ids: ids }
     ).then((r) => r.data),
+
+  bulkDelete: (ids: number[]) =>
+    api.post('/businesses/bulk-delete', { ids }),
+
+  bulkStatus: (ids: number[], status: string) =>
+    api.post('/businesses/bulk-status', { ids, status }).then((r) => r.data),
 }

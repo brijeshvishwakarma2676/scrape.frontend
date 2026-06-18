@@ -70,7 +70,19 @@ export function ScrapeModal() {
     mutationFn: async () => {
       const toImport = results.filter((_, i) => selected.has(i))
       setPipelineStatus('importing')
-      const created: Business[] = await Promise.all(toImport.map((b) => businessesApi.create(b)))
+      const created: Business[] = await Promise.all(
+        toImport.map((b) =>
+          businessesApi.create({
+            name: b.name,
+            category: b.category ?? undefined,
+            phone: b.phone ?? undefined,
+            website: b.website ?? undefined,
+            address: b.address ?? undefined,
+            rating: b.rating ?? undefined,
+            review_count: b.review_count,
+          })
+        )
+      )
       return created.map((b) => b.id)
     },
     onSuccess: async (ids) => {
