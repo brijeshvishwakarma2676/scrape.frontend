@@ -5,6 +5,7 @@ export interface Business {
   name: string
   category: string | null
   phone: string | null
+  phone_type: 'mobile' | 'landline' | 'unknown' | null
   website: string | null
   address: string | null
   rating: number | null
@@ -49,6 +50,27 @@ export interface DashboardStats {
   won: number
 }
 
+export interface TimePoint {
+  date: string
+  new: number
+  cumulative: number
+}
+
+export interface NameValue {
+  name: string
+  value: number
+}
+
+export interface Analytics {
+  leads_over_time: TimePoint[]
+  lead_status: NameValue[]
+  website_status: NameValue[]
+  phone_type: NameValue[]
+  top_categories: NameValue[]
+  funnel: NameValue[]
+  messages_sent: number
+}
+
 export interface PaginatedBusinesses {
   items: Business[]
   total: number
@@ -83,6 +105,9 @@ export const businessesApi = {
 
   stats: () =>
     api.get<DashboardStats>('/businesses/stats').then((r) => r.data),
+
+  analytics: () =>
+    api.get<Analytics>('/businesses/analytics').then((r) => r.data),
 
   checkWebsite: (id: number) =>
     api.post<Business>(`/check/business/${id}`).then((r) => r.data),

@@ -261,7 +261,7 @@ export function ScrapeModal() {
 
                       {/* Expanded detail panel */}
                       {expanded.has(i) && (
-                        <div className="px-10 pb-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs border-t border-border/50 pt-2.5 bg-muted/20">
+                        <div className="px-4 sm:px-10 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs border-t border-border/50 pt-2.5 bg-muted/20">
                           {b.phone && (
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5">

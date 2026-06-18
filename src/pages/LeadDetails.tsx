@@ -35,7 +35,7 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
-function WhatsAppButton({ phone, message }: { phone: string | null; message: string }) {
+function WhatsAppButton({ phone, phoneType, message }: { phone: string | null; phoneType?: string | null; message: string }) {
   const normalise = (raw: string) => {
     const digits = raw.replace(/\D/g, '')
     if (digits.startsWith('91') && digits.length === 12) return digits   // already +91xxxxxxxxxx
@@ -49,6 +49,22 @@ function WhatsAppButton({ phone, message }: { phone: string | null; message: str
 
   // Validate if phone number is valid (e.g. has at least 10 digits after cleaning)
   const hasValidPhone = cleaned && cleaned.replace(/\D/g, '').length >= 10
+
+  // Landlines cannot receive WhatsApp — block the send so you don't waste it
+  if (phoneType === 'landline') {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1.5 text-xs text-amber-500 opacity-70 cursor-not-allowed"
+        disabled
+        title="This is a landline number — it cannot receive WhatsApp messages. Find a mobile number instead."
+      >
+        <MessageCircle className="h-3 w-3" />
+        Landline — no WhatsApp
+      </Button>
+    )
+  }
 
   if (!hasValidPhone) {
     return (
@@ -218,6 +234,16 @@ export function LeadDetails() {
                         <ExternalLink className="h-3 w-3" /> Open Link
                       </a>
                     )}
+                    {key === 'phone' && business.phone && business.phone_type === 'landline' && (
+                      <span className="flex items-center gap-1 text-[11px] text-amber-500 font-medium" title="Landline — cannot receive WhatsApp">
+                        ⚠ Landline (no WhatsApp)
+                      </span>
+                    )}
+                    {key === 'phone' && business.phone && business.phone_type === 'mobile' && (
+                      <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium" title="Mobile — can receive WhatsApp">
+                        ✓ Mobile
+                      </span>
+                    )}
                   </div>
                   <Input
                     defaultValue={business[key] ?? ''}
@@ -384,11 +410,11 @@ export function LeadDetails() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="text-sm">AI Outreach Messages</CardTitle>
               <div className="flex flex-col gap-2 w-full sm:w-auto">
-                <div className="flex items-center flex-wrap gap-2 sm:justify-end">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:flex-wrap sm:justify-end">
                   <Button
                     size="sm"
                     variant="default"
-                    className="h-8 text-xs min-w-[100px]"
+                    className="h-9 sm:h-8 text-xs w-full sm:w-auto sm:min-w-[100px]"
                     disabled={generateMutation.isPending}
                     onClick={() => { setGeneratingType('wa_initial'); generateMutation.mutate({ promptType: 'initial', platform: 'whatsapp' }); }}
                   >
@@ -400,8 +426,21 @@ export function LeadDetails() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="default"
+                    className="h-9 sm:h-8 text-xs w-full sm:w-auto sm:min-w-[110px]"
+                    disabled={generateMutation.isPending}
+                    onClick={() => { setGeneratingType('wa_demo'); generateMutation.mutate({ promptType: 'send_demo', platform: 'whatsapp' }); }}
+                  >
+                    {generatingType === 'wa_demo' ? (
+                      <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating...</>
+                    ) : (
+                      "WA Send Demo"
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
-                    className="h-8 text-xs min-w-[110px]"
+                    className="h-9 sm:h-8 text-xs w-full sm:w-auto sm:min-w-[110px]"
                     disabled={generateMutation.isPending}
                     onClick={() => { setGeneratingType('wa_followup'); generateMutation.mutate({ promptType: 'follow_up', platform: 'whatsapp' }); }}
                   >
@@ -414,7 +453,7 @@ export function LeadDetails() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-8 text-xs min-w-[100px]"
+                    className="h-9 sm:h-8 text-xs w-full sm:w-auto sm:min-w-[100px]"
                     disabled={generateMutation.isPending}
                     onClick={() => { setGeneratingType('wa_budget'); generateMutation.mutate({ promptType: 'objection_budget', platform: 'whatsapp' }); }}
                   >
@@ -425,12 +464,12 @@ export function LeadDetails() {
                     )}
                   </Button>
                 </div>
-                <div className="flex items-center flex-wrap gap-2 sm:justify-end">
-                  <span className="text-xs text-muted-foreground mr-1">Other:</span>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:flex-wrap sm:justify-end">
+                  <span className="col-span-2 text-xs text-muted-foreground sm:col-span-1 sm:mr-1">Other:</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs px-2 text-muted-foreground min-w-[90px]"
+                    className="h-9 sm:h-7 text-xs px-2 text-muted-foreground w-full sm:w-auto sm:min-w-[90px]"
                     disabled={generateMutation.isPending}
                     onClick={() => { setGeneratingType('email'); generateMutation.mutate({ promptType: 'initial', platform: 'email' }); }}
                   >
@@ -439,7 +478,7 @@ export function LeadDetails() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs px-2 text-muted-foreground min-w-[80px]"
+                    className="h-9 sm:h-7 text-xs px-2 text-muted-foreground w-full sm:w-auto sm:min-w-[80px]"
                     disabled={generateMutation.isPending}
                     onClick={() => { setGeneratingType('sms'); generateMutation.mutate({ promptType: 'initial', platform: 'sms' }); }}
                   >
@@ -478,7 +517,7 @@ export function LeadDetails() {
                             </div>
                             <div className="flex items-center gap-1 flex-wrap justify-end">
                               <CopyButton text={parsed.whatsapp} />
-                              <WhatsAppButton phone={business.phone} message={parsed.whatsapp} />
+                              <WhatsAppButton phone={business.phone} phoneType={business.phone_type} message={parsed.whatsapp} />
                               {business.lead_status !== 'CONTACTED' && (
                                 <Button
                                   variant="ghost"

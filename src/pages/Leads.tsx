@@ -149,7 +149,7 @@ export function Leads() {
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4" />
-                Add Business
+                Add<span className="hidden xs:inline">&nbsp;Business</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
